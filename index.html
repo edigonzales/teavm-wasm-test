@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Java to WebAssembly with TeaVM</title>
+</head>
+<body>
+    <h1>Java to WebAssembly Example</h1>
+    <pre id="output"></pre>
+    <button id="saveButton">Save File</button>
+    <script type="module">
+        let myWasm = null;
+
+        // Step 1 & 2: Load the compiler module and runtime
+        import { load } from "./compiler.wasm-runtime.js"; // [3]
+
+        async function compileAndRunJavaToWasm() {
+            try {
+                // Initialize output for console.log messages
+                const originalLog = console.log;
+                console.log = (...args) => {
+                    originalLog(...args);
+                    document.getElementById('output').textContent += args.join(' ') + '\n';
+                };
+                const originalError = console.error;
+                console.error = (...args) => {
+                    originalError(...args);
+                    document.getElementById('output').textContent += 'ERROR: ' + args.join(' ') + '\n';
+                };
+
+                const teavmCompiler = await load("./compiler.wasm"); // [3]
+                const compilerLib = teavmCompiler.exports; // [3]
+
+                // Step 3: Create a Compiler instance
+                const compiler = compilerLib.createCompiler(); // [3, 4]
+
+                // Step 4: Set standard library definitions
+                console.log("Fetching SDK and TeaVM Classlib...");
+                const responseSdk = await fetch("./compile-classlib-teavm.bin");
+                compiler.setSdk(new Int8Array(await responseSdk.arrayBuffer())); // [4, 5]
+                const responseTeaVM = await fetch("./runtime-classlib-teavm.bin");
+                compiler.setTeaVMClasslib(new Int8Array(await responseTeaVM.arrayBuffer())); // [4, 5]
+                console.log("SDK and TeaVM Classlib loaded.");
+
+                // Step ili2c: add ili2c library (fatjar)
+                const ili2cJar = await fetch("./ili2c.jar");
+                //const foo = new Int8Array(await ili2cJar.arrayBuffer())
+                compiler.addJarFile(new Int8Array(await ili2cJar.arrayBuffer()));
+                console.log("ili2c libs loaded.");
+
+                // Step 6: Handle Diagnostics
+                compiler.onDiagnostic(diagnostic => {
+                    const msg = `Diagnostic [${diagnostic.type}] ${diagnostic.severity}: ${diagnostic.fileName}:${diagnostic.lineNumber} - ${diagnostic.message}`;
+                    if (diagnostic.severity === "error") {
+                        console.error(msg); // [5, 6]
+                    } else {
+                        console.log(msg); // [5, 6]
+                    }
+                });
+
+                // Step 5: Add your Java source code
+                const MY_JAVA_CODE = `
+                    import ch.interlis.ili2c.Ili2c;
+
+                    public class App {
+                        public static void main(String[] args) {
+                            System.out.println("Hello from Java compiled to WebAssembly!");
+                            for (String arg : args) {
+                                System.out.println("Arg: " + arg);
+                            }
+                            // Example: A simple loop
+                            for (int i = 0; i < 3; i++) {
+                                System.out.println("Iteration: " + i);
+                            }
+                        }
+                    }
+                `;
+                console.log("Adding Java source file...");
+                compiler.addSourceFile("App.java", MY_JAVA_CODE); // [4, 5]
+
+                // Step 7: Compile the Java code
+                console.log("Compiling Java code...");
+                const javaCompilationSuccessful = compiler.compile(); // [4, 5]
+                if (!javaCompilationSuccessful) {
+                    console.error("Java compilation failed. Check diagnostics above.");
+                    return;
+                }
+                console.log("Java compilation successful.");
+
+                // Step 8: Generate WebAssembly module
+                console.log("Generating WebAssembly...");
+                const wasmGenerationSuccessful = compiler.generateWebAssembly({
+                    outputName: "app",   // base name for WebAssembly module [4]
+                    mainClass: "App"    // main class containing the entry point [4]
+                }); // [4, 5]
+                if (!wasmGenerationSuccessful) {
+                    console.error("WebAssembly generation failed. Check diagnostics above.");
+                    return;
+                }
+                console.log("WebAssembly generation successful.");
+
+                // Step 9: Retrieve the generated WebAssembly file
+                const generatedWasm = compiler.getWebAssemblyOutputFile("app.wasm"); // [4, 5]
+                myWasm = generatedWasm;
+                // console.log(compiler.listOutputFiles())
+                // console.log(compiler.getOutputJar())
+                // console.log(compiler.getOutputFile())
+                console.log("WebAssembly module retrieved (size: " + generatedWasm.byteLength + " bytes).");
+
+                // Execute the generated WebAssembly module
+                console.log("Loading and executing WebAssembly module...");
+                const outputTeaVM = await load(generatedWasm); // [5]
+                // Call the main method of your compiled Java code
+                outputTeaVM.exports.main(["arg1", "arg2"]); // [5]
+                console.log("WebAssembly execution complete.");
+
+
+            } catch (error) {
+                console.error("An error occurred:", error);
+            }
+        }
+
+        /**
+         * Triggers a browser download using the File System Access API.
+         * @param {Int8Array} wasmInt8Array The WebAssembly file data.
+         * @param {string} fileName The suggested name for the saved file.
+         */
+        async function saveWithFileSystemAccess(wasmInt8Array, fileName) {
+            // Check if the API is available.
+            if (!window.showSaveFilePicker) {
+                alert("Your browser does not support the File System Access API. Please try a different browser like Chrome or Edge.");
+                // You could fall back to the classic method here.
+                return;
+            }
+
+            try {
+                // 1. Show the "Save As" dialog to the user.
+                const handle = await window.showSaveFilePicker({
+                suggestedName: fileName,
+                types: [{
+                    description: 'WebAssembly Files',
+                    accept: {
+                    'application/wasm': ['.wasm'],
+                    },
+                }],
+                });
+
+                // 2. Create a writable stream to the file.
+                const writable = await handle.createWritable();
+
+                // 3. Write your Int8Array data to the stream.
+                await writable.write(wasmInt8Array);
+
+                // 4. Close the file and write the contents to disk.
+                await writable.close();
+
+            } catch (err) {
+                // This error can happen if the user cancels the save dialog.
+                if (err.name !== 'AbortError') {
+                console.error('Could not save the file:', err);
+                }
+            }
+        }
+
+        // Run the function when the page loads
+        document.addEventListener('DOMContentLoaded', compileAndRunJavaToWasm);
+
+        document.getElementById('saveButton').addEventListener('click', async () => {
+            try {
+                // Call your save function here
+                await saveWithFileSystemAccess(myWasm);
+                console.log('File saved successfully!');
+            } catch (error) {
+                console.error('Error saving file:', error);
+            }
+        });
+    </script>
+</body>
+</html>
