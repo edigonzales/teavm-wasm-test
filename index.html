@@ -42,9 +42,11 @@
                 console.log("SDK and TeaVM Classlib loaded.");
 
                 // Step ili2c: add ili2c library (fatjar)
-                const ili2cJar = await fetch("./ili2c.jar");
-                //const foo = new Int8Array(await ili2cJar.arrayBuffer())
-                compiler.addJarFile(new Int8Array(await ili2cJar.arrayBuffer()));
+                //const ili2cJar = await fetch("./ili2c.jar");
+                //compiler.addJarFile(new Int8Array(await ili2cJar.arrayBuffer()));
+                const settingsClass = await fetch("./Settings.class"); 
+                const settingsClassArray = new Int8Array(await settingsClass.arrayBuffer())
+                compiler.addClassFile("ch/ehi/basics/settings/Settings.class", settingsClassArray);
                 console.log("ili2c libs loaded.");
 
                 // Step 6: Handle Diagnostics
@@ -59,7 +61,7 @@
 
                 // Step 5: Add your Java source code
                 const MY_JAVA_CODE = `
-                    import ch.interlis.ili2c.Main;
+                    import ch.ehi.basics.settings.Settings;
 
                     public class App {
                         public static void main(String[] args) {
@@ -71,6 +73,11 @@
                             for (int i = 0; i < 3; i++) {
                                 System.out.println("Iteration: " + i);
                             }
+
+                            Settings settings = new Settings();
+                            settings.setValue("foo", "bar");
+
+                            System.out.println(settings.getValue("foo"));
                         }
                     }
                 `;
@@ -86,8 +93,14 @@
                 }
                 console.log("Java compilation successful.");
 
+                //console.log(compiler.getOutputJar());
+                //console.log(compiler.listOutputFiles());
+
                 // Step 8: Generate WebAssembly module
                 console.log("Generating WebAssembly...");
+
+                compiler.addOutputClassFile("ch/ehi/basics/settings/Settings.class", settingsClassArray);
+
                 const wasmGenerationSuccessful = compiler.generateWebAssembly({
                     outputName: "app",   // base name for WebAssembly module [4]
                     mainClass: "App"    // main class containing the entry point [4]
@@ -112,8 +125,6 @@
                 // Call the main method of your compiled Java code
                 outputTeaVM.exports.main(["arg1", "arg2"]); // [5]
                 console.log("WebAssembly execution complete.");
-
-
             } catch (error) {
                 console.error("An error occurred:", error);
             }
@@ -125,6 +136,15 @@
          * @param {string} fileName The suggested name for the saved file.
          */
         async function saveWithFileSystemAccess(wasmInt8Array, fileName) {
+
+            const validWasmBytes = new Uint8Array([
+                0x00, 0x61, 0x73, 0x6d, // Wasm magic number: \0asm
+                0x01, 0x00, 0x00, 0x00 // Wasm version: 1
+            ]);
+
+            const validResult = WebAssembly.validate(wasmInt8Array);
+            console.log(`Is valid Wasm (valid example)? ${validResult}`); 
+
             // Check if the API is available.
             if (!window.showSaveFilePicker) {
                 alert("Your browser does not support the File System Access API. Please try a different browser like Chrome or Edge.");
