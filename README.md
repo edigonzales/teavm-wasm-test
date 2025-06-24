@@ -16,6 +16,7 @@ Die WASM-Datei kann im Node-Beispiel referenziert werden und ausgeführt werden.
 
 - Woher stammt bei mir wasmtime?
 - Wenn die 0.13-Version released ist, probieren, ob es auch mit Gradle geht. Das Plugin fehlt m.E. für die dev-Version.
+- https://teavm.org/docs/tooling/maven.html
 
 ## node example
 
