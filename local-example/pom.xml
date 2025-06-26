@@ -29,6 +29,14 @@
       <version>${teavm.version}</version>
       <scope>provided</scope>
     </dependency>
+    
+<dependency>
+    <groupId>org.teavm</groupId>
+    <artifactId>teavm-interop</artifactId>
+    <version>${teavm.version}</version> <!-- Use the same version as other TeaVM deps -->
+    <scope>provided</scope>
+</dependency>
+
 
     <!-- Servlet specification -->
     <dependency>
@@ -52,6 +60,11 @@
       <groupId>ch.ehi</groupId>
       <artifactId>ehibasics</artifactId>
       <version>1.4.1</version>
+    </dependency>
+    <dependency>
+      <groupId>ch.interlis</groupId>
+      <artifactId>iox-ili</artifactId>
+      <version>1.23.4</version>
     </dependency>
 
   </dependencies>
@@ -116,7 +129,7 @@
 
               <targetFileName>ili2c.wasm</targetFileName>
 
-              <targetType>WEBASSEMBLY_WASI</targetType>
+              <targetType>WEBASSEMBLY_GC</targetType>
 
               <!-- Main class, containing static void main(String[]) -->
               <mainClass>ch.so.agi.interlis.InterlisCompiler</mainClass>
@@ -140,6 +153,15 @@
               <!-- Whether TeaVM should also put source files into output directory,
                    for compatibility with source maps. Disable for production. -->
               <sourceFilesCopied>true</sourceFilesCopied>
+              
+            <classesToPreserve>
+        <!-- Exclude entire java.sql package -->
+        <include>java.sql.**</include>
+        <!-- Or exclude specific class -->
+        <include>java.sql.SQLException</include>
+    </classesToPreserve>
+
+        
             </configuration>
           </execution>
           <execution>

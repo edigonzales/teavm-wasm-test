@@ -42,11 +42,11 @@
                 console.log("SDK and TeaVM Classlib loaded.");
 
                 // Step ili2c: add ili2c library (fatjar)
-                //const ili2cJar = await fetch("./ili2c.jar");
-                //compiler.addJarFile(new Int8Array(await ili2cJar.arrayBuffer()));
-                const settingsClass = await fetch("./Settings.class"); 
-                const settingsClassArray = new Int8Array(await settingsClass.arrayBuffer())
-                compiler.addClassFile("ch/ehi/basics/settings/Settings.class", settingsClassArray);
+                const ili2cJar = await fetch("./ili2c.jar");
+                compiler.addJarFile(new Int8Array(await ili2cJar.arrayBuffer()));
+                //const settingsClass = await fetch("./Settings.class"); 
+                //const settingsClassArray = new Int8Array(await settingsClass.arrayBuffer())
+                //compiler.addClassFile("ch/ehi/basics/settings/Settings.class", settingsClassArray);
                 console.log("ili2c libs loaded.");
 
                 // Step 6: Handle Diagnostics
@@ -61,7 +61,12 @@
 
                 // Step 5: Add your Java source code
                 const MY_JAVA_CODE = `
+                    import java.util.ArrayList;
+
                     import ch.ehi.basics.settings.Settings;
+                    import ch.interlis.ili2c.Ili2cSettings;
+                    import ch.interlis.ilirepository.IliManager;
+
 
                     public class App {
                         public static void main(String[] args) {
@@ -78,6 +83,13 @@
                             settings.setValue("foo", "bar");
 
                             System.out.println(settings.getValue("foo"));
+
+                            IliManager manager = new IliManager();        
+                            manager.setRepositories(Ili2cSettings.DEFAULT_ILIDIRS.split(";"));
+                            //manager.setRepositories(ilidirs.split(";"));
+                            ArrayList<String> ilifiles = new ArrayList<String>();
+                            ilifiles.add("SO_ARP_SEin_Konfiguration_20250115.ili");
+
                         }
                     }
                 `;
