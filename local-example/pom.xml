@@ -154,14 +154,6 @@
                    for compatibility with source maps. Disable for production. -->
               <sourceFilesCopied>true</sourceFilesCopied>
               
-            <classesToPreserve>
-        <!-- Exclude entire java.sql package -->
-        <include>java.sql.**</include>
-        <!-- Or exclude specific class -->
-        <include>java.sql.SQLException</include>
-    </classesToPreserve>
-
-        
             </configuration>
           </execution>
           <execution>

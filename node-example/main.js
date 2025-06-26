@@ -3,7 +3,7 @@ const path = require('path');
 const { load } = require("./compiler.wasm-runtime.js");
 
 (async () => {
-    const wasmPath = path.join(__dirname, "foo.wasm");
+    const wasmPath = path.join(__dirname, "ili2c.wasm");
     const wasmBuffer = fs.readFileSync(wasmPath);
 
     const outputTeaVM = await load(wasmBuffer);

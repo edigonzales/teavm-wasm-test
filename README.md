@@ -8,6 +8,10 @@ Erstellung WASM / WASI aus Java-Code. `targetType` ist entweder `WEBASSEMBLY_GC`
 mvn package
 ```
 
+```
+cp target/generated/wasm/teavm/ili2c.wasm ../node-example 
+```
+
 Die WASM-Datei kann im Node-Beispiel referenziert werden und ausgeführt werden. Die WASI-Datei kann z.B. mit `wasmtimer` ausgeführt werden:
 
 ```
